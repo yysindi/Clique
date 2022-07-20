@@ -12,7 +12,7 @@ console.log(username, room);
 socket.emit('joinRoom', { username, room });
 
 socket.on('roomUsers', ({ room, users }) => {
-  outputRoomName(room);
+  // outputRoomName(room);
   outputUsers(users);
 });
 
@@ -35,9 +35,9 @@ socket.on('message', ({ user, text, date }) => {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 });
 
-function outputRoomName(room) {
-  roomName.innerText = room;
-}
+// function outputRoomName(room) {
+//   roomName.innerText = '#' + room;
+// }
 
 function outputUsers(users) {
   userList.innerHTML = `

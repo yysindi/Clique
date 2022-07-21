@@ -145,17 +145,6 @@ app.post('/signup', (req, res, next) => {
     .catch(err => console.log(err));
 });
 
-// app.use((req, res, next) => {
-//   User.findByPk(1)
-//     .then(user => {
-//       req.user = user;
-//       next();
-//     })
-//     .catch(err => {
-//       console.log(err);
-//     });
-// });
-
 app.get('/home', isAuthenticated, (req, res, next) => {
   console.log(roomsBelongingToUser);
   req.user
@@ -174,7 +163,7 @@ app.get('/home', isAuthenticated, (req, res, next) => {
     });
 });
 
-app.get('/rooms', (req, res) => {
+app.get('/rooms', isAuthenticated, (req, res) => {
   // res.sendFile(__dirname + '/public/chat.html');
   res.render('chat');
 });
@@ -201,6 +190,22 @@ app.post('/join-room', isAuthenticated, (req, res) => {
       return req.user.createRoom().then(room => {
         res.redirect(`/rooms?username=${req.user.username}&room=${room.id}`);
       });
+    })
+    .catch(err => {
+      console.log(err);
+    });
+});
+
+app.post('/delete-room', (req, res, next) => {
+  const roomNumber = req.body.roomNumber;
+  UserRoom.destroy({
+    where: {
+      roomId: roomNumber,
+      userId: req.user.id,
+    },
+  })
+    .then(() => {
+      res.redirect('/home');
     })
     .catch(err => {
       console.log(err);

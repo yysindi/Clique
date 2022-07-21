@@ -5,6 +5,8 @@ const chatForm = document.querySelector('#chat-form');
 const roomName = document.getElementById('room-name');
 const userList = document.getElementById('users');
 
+console.log('test');
+
 const { username, room } = Qs.parse(location.search, {
   ignoreQueryPrefix: true,
 });

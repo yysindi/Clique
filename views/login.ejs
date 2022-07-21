@@ -28,7 +28,7 @@ height: 100%;
 }</style>
 </head>
 <body>
-  <form action="">
+  <form action="/login" method="post">
     <section class="vh-100">
       <div class="container-fluid h-custom">
         <div class="row d-flex justify-content-center align-items-center h-100">
@@ -47,14 +47,14 @@ height: 100%;
 
               <!-- Email input -->
               <div class="form-outline mb-4">
-                <input type="email" id="form3Example3" class="form-control form-control-lg"
+                <input type="email" name="email" id="email" class="form-control form-control-lg"
                   placeholder="Email address" />
               </div>
 
               <!-- Password input -->
               <div class="form-outline mb-3">
-                <input type="password" id="form3Example4" class="form-control form-control-lg"
-                  placeholder="Enter password" />
+                <input type="password" name="password" id="password" class="form-control form-control-lg"
+                  placeholder="Password" />
 
               </div>
 
@@ -70,7 +70,7 @@ height: 100%;
               </div>
 
               <div class="text-center text-lg-start mt-4 pt-2">
-                <button type="button" class="btn btn-primary btn-lg"
+                <button type="submit" value="submit" class="btn btn-primary btn-lg"
                   style="padding-left: 2.5rem; padding-right: 2.5rem; width: 100%">Login</button>
                   <div class="divider d-flex align-items-center my-4">
                     <p class="text-center fw-bold mx-3 mb-0"></p>

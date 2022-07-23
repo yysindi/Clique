@@ -10,6 +10,7 @@ const bcrypt = require('bcryptjs');
 const Room = require('./models/room');
 const User = require('./models/user');
 const UserRoom = require('./models/userRoom');
+const Message = require('./models/message');
 const isAuthenticated = require('./middleware/isAuthenticated');
 const formatMessage = require('./utils/messages');
 const {
@@ -45,7 +46,7 @@ app.use((req, res, next) => {
   if (!req.session.user) {
     return next();
   }
-  User.findByPk(req.session.user.id)
+  User.findByPk(req.session.user.username)
     .then(user => {
       req.user = user;
       user.getRooms().then(rooms => {
@@ -163,29 +164,52 @@ app.get('/home', isAuthenticated, (req, res, next) => {
     });
 });
 
-app.get('/rooms', isAuthenticated, (req, res) => {
+app.get('/rooms', isAuthenticated, (req, res, next) => {
   // res.sendFile(__dirname + '/public/chat.html');
-  res.render('chat');
+  sequelize
+    .query(
+      `SELECT * FROM userRooms
+      INNER JOIN messages ON userRooms.id = messages.userRoomId
+      WHERE userRooms.roomId = ${req.query.room}
+      ORDER BY messages.createdAt `
+    )
+    .then(messages => {
+      console.log(messages);
+      res.render('chat', {
+        messages: messages[0],
+      });
+    })
+
+    .catch(err => console.log(err));
 });
 
 app.post('/join-room', isAuthenticated, (req, res) => {
   UserRoom.findAll({
     group: ['roomId'],
-    attributes: ['roomId', [sequelize.fn('COUNT', 'userId'), 'peoplePerRoom']],
+    attributes: [
+      'roomId',
+      [sequelize.fn('COUNT', 'userUsername'), 'peoplePerRoom'],
+    ],
     raw: true,
   })
     .then(allRooms => {
       console.log(roomsBelongingToUser);
+      console.log(allRooms);
       allRoomsNotBelongingToUser = allRooms.filter(room => {
         return !roomsBelongingToUser.includes(room.roomId);
       });
       const firstAvailableRoom = allRoomsNotBelongingToUser.find(room => {
-        return room.peoplePerRoom < 2;
+        return room.peoplePerRoom < 3;
       });
       if (firstAvailableRoom) {
-        return res.redirect(
-          `/rooms?username=${req.user.username}&room=${firstAvailableRoom.roomId}`
-        );
+        return UserRoom.create({
+          userUsername: req.user.username,
+          roomId: firstAvailableRoom.roomId,
+        }).then(() => {
+          res.redirect(
+            `/rooms?username=${req.user.username}&room=${firstAvailableRoom.roomId}`
+          );
+        });
       }
       return req.user.createRoom().then(room => {
         res.redirect(`/rooms?username=${req.user.username}&room=${room.id}`);
@@ -201,16 +225,37 @@ app.post('/delete-room', (req, res, next) => {
   UserRoom.destroy({
     where: {
       roomId: roomNumber,
-      userId: req.user.id,
+      userUsername: req.user.username,
     },
   })
     .then(() => {
-      res.redirect('/home');
+      UserRoom.findAll({
+        where: { roomId: roomNumber },
+        raw: true,
+      })
+        .then(room => {
+          console.log('!!!!!!!!!!!');
+          console.log(room);
+          if (room.length == 0) {
+            Room.destroy({
+              where: { id: roomNumber },
+            });
+          }
+        })
+        .then(() => {
+          res.redirect('/home');
+        })
+        .catch(err => console.log(err));
     })
     .catch(err => {
       console.log(err);
     });
 });
+
+// app.post('/send-message', (req, res, next) => {
+//   console.log('!!!!!!!!!!!!!!!!!!!!!!!');
+//   console.log(req.body.msg);
+// });
 
 io.on('connect', socket => {
   socket.on('joinRoom', ({ username, room }) => {
@@ -235,7 +280,27 @@ io.on('connect', socket => {
 
   socket.on('chatMessage', msg => {
     const user = getCurrentUser(socket.id);
-    io.to(user.room).emit('message', formatMessage(user.username, msg));
+    console.log(user.username, user.room, msg);
+    UserRoom.findAll({
+      where: { userUsername: user.username, roomId: user.room },
+      raw: true,
+    })
+      .then(room => {
+        id = room[0].id;
+        Message.create({
+          messageContent: msg,
+          userRoomId: id,
+        });
+      })
+      // Message.create({
+      //   userUsername: user.username,
+      //   messageContent: msg,
+      //   roomId: user.room,
+      // })
+      .then(() => {
+        io.to(user.room).emit('message', formatMessage(user.username, msg));
+      })
+      .catch(err => console.log(err));
   });
 
   socket.on('disconnect', () => {
@@ -259,22 +324,11 @@ const PORT = 3001 || process.env.PORT;
 User.belongsToMany(Room, { through: UserRoom });
 Room.belongsToMany(User, { through: UserRoom });
 
+Message.belongsTo(UserRoom);
+UserRoom.hasMany(Message);
+
 sequelize
   .sync()
-  // .then(result => {
-  //   return User.findByPk(3).then(user => user.createRoom());
-  //   // console.log(result);
-  // })
-  // .then(user => {
-  //   if (!user) {
-  //     User.create({ name: 'Yasmeen', email: 'test@test.com' });
-  //   }
-  //   return user;
-  // })
-  // .then(user => {
-  //   console.log(user);
-  //   return user.createRoom();
-  // })
   .then(() => {
     server.listen(PORT, () => {
       console.log('Server connected');
